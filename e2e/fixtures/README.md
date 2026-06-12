@@ -20,7 +20,8 @@ Use this when creating a product via API or UI:
 {
   "name": "Portable Neck Fan",
   "url": "https://example.com/neck-fan",
-  "niche": "summer gadgets"
+  "niche": "summer gadgets",
+  "description": "Portable USB neck fan with 3 speed settings, lightweight for hot commutes."
 }
 ```
 
