@@ -10,3 +10,7 @@ node_modules/
 # IDE
 .idea/
 .vscode/
+
+# Generated media (persisted locally in dev)
+/storage/*
+!/storage/.gitkeep

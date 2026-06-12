@@ -1,5 +1,7 @@
 # Infra local — ecom-op-creatives
 # Uso: docker compose up -d
+#
+# Media files live on the host at ./storage (shared with API/workers via STORAGE_DIR).
 
 services:
   postgres:
