@@ -14,3 +14,13 @@ node_modules/
 # Generated media (persisted locally in dev)
 /storage/*
 !/storage/.gitkeep
+
+# Local data (postgres bind mount, exports)
+/data/*
+!/data/.gitkeep
+!/data/postgres/.gitkeep
+!/data/backups/.gitkeep
+/exports/*
+!/exports/.gitkeep
+/logs/*
+!/logs/.gitkeep
