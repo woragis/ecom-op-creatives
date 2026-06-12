@@ -62,7 +62,7 @@ Colunas planejadas para uso pleno: `input_json`, `provider_used`.
 |------|---------|--------|
 | A | Bind mount Postgres em `./data/postgres` | implementado |
 | B | Artifact mirror em `artifacts/` | implementado |
-| D | `PAUSE_BEFORE_VIDEO` + continue | implementado |
+| D | `PAUSE_BEFORE_VIDEO` + `POST /continue` | implementado |
 | E | `GET /export` zip por run | planejado |
 | F | S3/MinIO (substituir `storage.Local`) | planejado |
 

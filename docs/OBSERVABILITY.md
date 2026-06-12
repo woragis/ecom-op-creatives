@@ -14,7 +14,11 @@ Plano de evolução do logging para runs de pipeline pagos (Runway, OpenAI, etc.
 
 Monitoramento hoje: `docker compose logs -f worker-pipeline` + UI `/runs/{id}`.
 
-## Fase C — Logging estruturado (`log/slog`)
+## Fase C — Logging estruturado (`log/slog`) ✅
+
+Implementado em `internal/platform/applog` — JSON por default, campos `run_id` e `step`.
+
+## Detalhes — Logging estruturado (`log/slog`)
 
 ### Formato
 
