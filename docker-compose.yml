@@ -1,7 +1,57 @@
-# Infra local — ecom-op-creatives
-# Uso: docker compose up -d
+# Full stack — ecom-op-creatives
 #
-# Media files live on the host at ./storage (shared with API/workers via STORAGE_DIR).
+# 1. cp .env.example .env
+# 2. Fill API keys in .env (see comments)
+# 3. docker compose up -d --build
+#
+# UI:      http://localhost:3000
+# API:     http://localhost:8080
+# RabbitMQ http://localhost:15672 (guest/guest)
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgres://creatives:creatives@postgres:5432/creatives?sslmode=disable
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+  MIGRATIONS_DIR: /app/migrations
+  STORAGE_DIR: /data/storage
+  RENDER_DIR: /app/worker-render
+  FFMPEG_PATH: ffmpeg
+  HTTP_ADDR: :8080
+  CORS_ALLOWED_ORIGINS: http://localhost:3000
+  AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-me}
+  # Public URL — used by video providers (image2video) and browser media links.
+  # For image2video with real APIs, use a tunnel URL (ngrok/cloudflare) reachable from the internet.
+  API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8080}
+  # Internal URL — Remotion inside the worker fetches media from the API container.
+  API_INTERNAL_URL: http://api:8080
+  LLM_DEFAULT_PROVIDER: ${LLM_DEFAULT_PROVIDER:-openai}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  SERPER_API_KEY: ${SERPER_API_KEY:-}
+  ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+  ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+  IMAGE_PROVIDER_DEFAULT: ${IMAGE_PROVIDER_DEFAULT:-flux}
+  FLUX_API_KEY: ${FLUX_API_KEY:-}
+  IDEOGRAM_API_KEY: ${IDEOGRAM_API_KEY:-}
+  STABILITY_API_KEY: ${STABILITY_API_KEY:-}
+  VIDEO_PROVIDER_DEFAULT: ${VIDEO_PROVIDER_DEFAULT:-kling}
+  KLING_API_KEY: ${KLING_API_KEY:-}
+  RUNWAY_API_KEY: ${RUNWAY_API_KEY:-}
+  LUMA_API_KEY: ${LUMA_API_KEY:-}
+  GOOGLE_VEO_API_KEY: ${GOOGLE_VEO_API_KEY:-}
+  SUPERVISOR_MIN_SCORE: ${SUPERVISOR_MIN_SCORE:-75}
+  INTRO_DURATION_MS: ${INTRO_DURATION_MS:-2500}
+  IMAGE_MAX_SCENES: ${IMAGE_MAX_SCENES:-3}
+  VIDEO_MAX_SCENES: ${VIDEO_MAX_SCENES:-3}
+  VIDEO_POLL_INTERVAL_SEC: ${VIDEO_POLL_INTERVAL_SEC:-5}
+  VIDEO_MAX_POLL_MIN: ${VIDEO_MAX_POLL_MIN:-15}
+  LLM_MOCK: ${LLM_MOCK:-0}
+  SERPER_MOCK: ${SERPER_MOCK:-0}
+  ELEVENLABS_MOCK: ${ELEVENLABS_MOCK:-0}
+  IMAGE_MOCK: ${IMAGE_MOCK:-0}
+  VIDEO_MOCK: ${VIDEO_MOCK:-0}
+  SUBTITLES_MOCK: ${SUBTITLES_MOCK:-0}
+  RENDER_MOCK: ${RENDER_MOCK:-0}
+  POSTPROCESS_MOCK: ${POSTPROCESS_MOCK:-0}
 
 services:
   postgres:
@@ -14,6 +64,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creatives -d creatives"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -23,19 +78,61 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  api:
+    build:
+      context: ./backend
+    command: ["/usr/local/bin/server"]
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "8080:8080"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      <<: *backend-env
     volumes:
-      - minio_data:/data
+      - ./storage:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker-pipeline:
+    build:
+      context: ./backend
+    command: ["/usr/local/bin/worker-pipeline"]
+    environment:
+      <<: *backend-env
+      SKIP_SQL_MIGRATIONS: "1"
+    volumes:
+      - ./storage:/data/storage
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    environment:
+      API_URL: http://api:8080
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:
-  minio_data:

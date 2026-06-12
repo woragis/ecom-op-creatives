@@ -60,11 +60,28 @@ creatives/
 └── docker-compose.yml
 ```
 
-## Desenvolvimento local
+## Docker (stack completo)
 
 ```bash
-# Infra
-docker compose up -d
+cp .env.example .env
+# Edite .env com suas API keys (veja comentários no arquivo)
+
+docker compose up -d --build
+```
+
+| Serviço | URL |
+|---------|-----|
+| Dashboard | http://localhost:3000 |
+| API | http://localhost:8080 |
+| RabbitMQ UI | http://localhost:15672 (guest/guest) |
+
+Media gerada fica em `./storage/` (volume compartilhado entre API e worker).
+
+## Desenvolvimento local (sem Docker nos apps)
+
+```bash
+# Só infra
+docker compose up -d postgres rabbitmq
 
 # Backend (ver backend/README.md)
 cd backend && make dev
