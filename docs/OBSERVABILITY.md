@@ -2,21 +2,26 @@
 
 Plano de evolução do logging para runs de pipeline pagos (Runway, OpenAI, etc.).
 
-## Estado atual (baseline)
+## Estado atual
 
-| Existe | Não existe |
-|--------|------------|
-| `log.Printf` no startup API/worker | Logs estruturados (JSON) |
-| Uma linha por step no worker | `run_id` / `step_id` em todos os logs |
-| `pipeline_steps.error_message` no Postgres | Log de prompts, latência, custo |
-| | Arquivo de log persistente |
-| | Correlação API ↔ worker |
-
-Monitoramento hoje: `docker compose logs -f worker-pipeline` + UI `/runs/{id}`.
+Monitoramento: `docker compose logs -f worker-pipeline` + UI `/runs/{id}` + arquivos em `storage/runs/{id}/`.
 
 ## Fase C — Logging estruturado (`log/slog`) ✅
 
-Implementado em `internal/platform/applog` — JSON por default, campos `run_id` e `step`.
+Implementado em `internal/platform/applog` + `internal/platform/runctx` — JSON por default, `run_id` / `step` / `step_id` propagados via context no executor.
+
+### Cobertura por integração
+
+| Integração | Campos logados |
+|------------|----------------|
+| LLM (OpenAI) | `system_preview`, `user_preview`, `prompt_tokens`, `completion_tokens`, `duration_ms` |
+| Serper | `query`, `results`, `duration_ms` |
+| OpenAI TTS / DALL·E / Whisper | `operation`, previews, `duration_ms`, tamanho de saída |
+| Vídeo (Runway etc.) | `job_id`, submit/poll, `duration_ms`, erros de provider |
+| Remotion | slog no Go + JSONL em `storage/runs/{id}/logs/render.log` |
+| FFmpeg | loudnorm/thumbnail start/complete, `duration_ms`, stderr resumido em falha |
+| RabbitMQ | publish/dequeue com `queue`, `run_id`, `step_id`, `attempt` |
+| Artefatos | `artifact written` com `path` e `bytes` |
 
 ## Detalhes — Logging estruturado (`log/slog`)
 
